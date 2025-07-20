@@ -1,0 +1,10 @@
+# MATLAB 特定文件
+*.asv        # 自动保存文件
+*.mex*       # 编译的 MEX 文件
+slprj/       # Simulink 项目文件夹
+*.slxc       # Simulink 缓存文件
+*.mlappinstall  # MATLAB 应用安装文件
+*.mltbx      # MATLAB 工具箱文件
+# 其他临时文件
+*.bak
+*.log
