@@ -1,4 +1,4 @@
-function magic_r1_coefficient_matrix = magic_ineq_r1()
+function [magic_r1_coefficient_matrix,dims] = magic_ineq_r1()
     dims.mA = 3; dims.mB = 3; dims.oA = 4; dims.oB = 4; n=1;
     I = zeros(dims.oA^n, dims.oB^n, dims.mA^n, dims.mB^n);
     

@@ -1,5 +1,8 @@
 % Script to run the tensor-based search
 
+% --- Define Scenario ---
+% Set number of parallel reptition 
+n = 1;
 
 % --- 1. Create the Inequality Tensor 'I' ---
 fprintf('Creating CHSH inequality tensor...\n');

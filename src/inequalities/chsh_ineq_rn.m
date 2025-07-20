@@ -23,6 +23,33 @@ function [chsh_rn_coefficient_matrix,dims] = chsh_ineq_rn(n)
     % Standard CHSH dimensions: 2 inputs (m) and 2 outputs (o) for Alice (A) and Bob (B).
     dims.mA = 2; dims.mB = 2; dims.oA = 2; dims.oB = 2;
 
+
+    if n == 1
+        I = zeros(dims.oA, dims.oB, dims.mA, dims.mB);
+
+        % Define inputs (x,y). For n=1, x_idx=x, y_idx=y.
+        x1y1 = {1,1}; x1y2 = {1,2}; x2y1 = {2,1}; x2y2 = {2,2};
+        
+        % E(x,y) = p(a=b) - p(a~=b). This translates to:
+        % I(a=b, x,y) = +1
+        % I(a~=b, x,y) = -1
+        
+        % Term: (a=b,1,1)
+        I(1,1, x1y1{:}) = 1; I(2,2, x1y1{:}) = 1;
+        
+        % Term: (a=b,1,2)
+        I(1,1, x1y2{:}) = 1; I(2,2, x1y2{:}) = 1;
+        
+        % Term: (a=b,2,1)
+        I(1,1, x2y1{:}) = 1; I(2,2, x2y1{:}) = 1;
+        
+        % Term: (a~=b,2,2)
+        I(1,2, x2y2{:}) = 1; I(2,1, x2y2{:}) = 1;
+        
+        chsh_rn_coefficient_matrix = I;
+        return;
+    end
+
     % The total number of possible sequences of inputs/outputs.
     num_seq_X = dims.mA^n;
     num_seq_Y = dims.mB^n;
