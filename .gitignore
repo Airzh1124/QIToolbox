@@ -8,3 +8,5 @@ slprj/       # Simulink 项目文件夹
 # 其他临时文件
 *.bak
 *.log
+*.prj
+resources/
