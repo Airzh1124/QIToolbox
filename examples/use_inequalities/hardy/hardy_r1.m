@@ -72,3 +72,5 @@ cvx_end;
 
 
 quantum_bound = cvx_optval;
+
+fprintf("local bound = %d, quantum bound = %d \n",local_bound,quantum_bound);
