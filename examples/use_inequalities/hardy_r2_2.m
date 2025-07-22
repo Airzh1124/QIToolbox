@@ -1,3 +1,4 @@
+
 % Script to run the tensor-based search
 
 % --- Define Scenario ---
@@ -8,12 +9,13 @@ n = 1;
 fprintf('Creating CHSH inequality tensor...\n');
 
 %chsh_ineq_2
-[I,dims] = hardy_ineq_r1();
+[I,dims] = hardy_ineq_r2_2();
+
 
 % --- 2. Run the search ---
 tic;
 % Run sequentially for this small problem
-[maxVal, best] = L0bit_bound(dims.mA, dims.mB, dims.oA, dims.oB, n, I, 'UseParallel', false);
+[maxVal, best] = L1bit_bound(dims.mA, dims.mB, dims.oA, dims.oB, n, I, 'UseParallel', false);
 toc;
 
 % Display results
