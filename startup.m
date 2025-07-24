@@ -1,4 +1,5 @@
-% QIToolbox/startup.m
-  addpath(genpath('src')); % Includes L0bit/, utils/, inequalities/, etc.
-  addpath(genpath('examples')); % Includes example scripts
-  disp('QIToolbox paths loaded.');
+% Add QIToolbox source and examples independent of the current directory.
+rootDir = fileparts(mfilename('fullpath'));
+addpath(genpath(fullfile(rootDir, 'src')));
+addpath(genpath(fullfile(rootDir, 'examples')));
+disp('QIToolbox paths loaded.');
