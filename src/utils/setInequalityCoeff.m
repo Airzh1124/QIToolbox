@@ -1,43 +1,29 @@
-function I = setInequalityCoeff(I, value, a_vec, b_vec, x_vec, y_vec, dims)
-%setInequalityCoeff (v3 - FINAL, Corrected Syntax) Sets a single 
-%   coefficient in the inequality tensor using vector subscripts.
-%
-%   This version fixes the "chaining outputs" syntax error by using
-%   intermediate variables for the cell arrays.
+function I = setInequalityCoeff(I, value, a, b, x, y, dims)
+%SETINEQUALITYCOEFF Set one coefficient using per-round one-based indices.
+%   I = SETINEQUALITYCOEFF(I, VALUE, A, B, X, Y, DIMS) maps each index
+%   vector to MATLAB's column-major product-space order and assigns VALUE.
 
-    n = length(x_vec);
-    
-    % --- Input Validation ---
-    assert(all(a_vec <= dims.oA & a_vec >= 1), 'Invalid a_vec: An element exceeds output dimension oA=%d.', dims.oA);
-    assert(all(b_vec <= dims.oB & b_vec >= 1), 'Invalid b_vec: An element exceeds output dimension oB=%d.', dims.oB);
-    assert(all(x_vec <= dims.mA & x_vec >= 1), 'Invalid x_vec: An element exceeds input dimension mA=%d.', dims.mA);
-    assert(all(y_vec <= dims.mB & y_vec >= 1), 'Invalid y_vec: An element exceeds input dimension mB=%d.', dims.mB);
-    assert(length(a_vec)==n && length(b_vec)==n && length(y_vec)==n, 'All input/output vectors must have the same length n.');
+requiredFields = {'mA', 'mB', 'oA', 'oB', 'n'};
+assert(isstruct(dims) && isscalar(dims) && all(isfield(dims, requiredFields)), ...
+    'QIToolbox:InvalidDimensions', 'dims must contain mA, mB, oA, oB, and n.');
+validateattributes(value, {'numeric'}, {'scalar', 'real', 'finite'}, mfilename, 'value');
+assert(all([numel(a), numel(b), numel(x), numel(y)] == dims.n), ...
+    'QIToolbox:InvalidIndexLength', 'A, B, X, and Y must each contain dims.n values.');
+validateIndex(a, dims.oA, 'a');
+validateIndex(b, dims.oB, 'b');
+validateIndex(x, dims.mA, 'x');
+validateIndex(y, dims.mB, 'y');
 
-    % Define dimensions of the product spaces
-    dims_A = repmat(dims.oA, 1, n);
-    dims_B = repmat(dims.oB, 1, n);
-    dims_X = repmat(dims.mA, 1, n);
-    dims_Y = repmat(dims.mB, 1, n);
+I(sequenceIndex(a, dims.oA), sequenceIndex(b, dims.oB), ...
+    sequenceIndex(x, dims.mA), sequenceIndex(y, dims.mB)) = value;
+end
 
-    % --- Convert to linear indices (ROBUST 2-STEP METHOD) ---
-    
-    % For Alice's output
-    a_cell = num2cell(a_vec);
-    a_idx = sub2ind(dims_A, a_cell{:});
+function validateIndex(values, upperBound, name)
+    assert(isnumeric(values) && isreal(values) && all(isfinite(values)) && ...
+        all(values == fix(values)) && all(values >= 1 & values <= upperBound), ...
+        'QIToolbox:InvalidIndex', '%s values must be integers between 1 and the corresponding dimension.', name);
+end
 
-    % For Bob's output
-    b_cell = num2cell(b_vec);
-    b_idx = sub2ind(dims_B, b_cell{:});
-
-    % For Alice's input
-    x_cell = num2cell(x_vec);
-    x_idx = sub2ind(dims_X, x_cell{:});
-
-    % For Bob's input
-    y_cell = num2cell(y_vec);
-    y_idx = sub2ind(dims_Y, y_cell{:});
-    
-    % Set the value
-    I(a_idx, b_idx, x_idx, y_idx) = value;
+function index = sequenceIndex(values, base)
+    index = 1 + sum((values(:)' - 1) .* base.^(0:numel(values) - 1));
 end

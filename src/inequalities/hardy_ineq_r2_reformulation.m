@@ -1,5 +1,8 @@
-function [hardy_r2_2_coefficient_matrix,dims] = hardy_ineq_r2_reformulation()
-    dims.mA = 4; dims.mB = 4; dims.oA = 4; dims.oB = 4; dims.n=1;
+function [inequalityTensor, dims] = hardy_ineq_r2_reformulation()
+%HARDY_INEQ_R2_REFORMULATION Construct the one-round reformulation of
+%the two-round Hardy inequality.
+
+dims = struct('mA', 4, 'mB', 4, 'oA', 4, 'oB', 4, 'n', 1);
     I = zeros(dims.oA^dims.n, dims.oB^dims.n, dims.mA^dims.n, dims.mB^dims.n);
     penalty_coeff = -1e10;
 
@@ -93,5 +96,5 @@ function [hardy_r2_2_coefficient_matrix,dims] = hardy_ineq_r2_reformulation()
 
     I(2,2,3,3)=1;
 
-    hardy_r2_2_coefficient_matrix  = I;
+    inequalityTensor = I;
 end

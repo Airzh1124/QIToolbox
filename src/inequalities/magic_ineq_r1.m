@@ -1,34 +1,27 @@
-function [magic_r1_coefficient_matrix,dims] = magic_ineq_r1()
-    dims.mA = 3; dims.mB = 3; dims.oA = 4; dims.oB = 4; n=1;
-    I = zeros(dims.oA^n, dims.oB^n, dims.mA^n, dims.mB^n);
-    
-    
-    X = [0, 1, 2];
+function [inequalityTensor, dims] = magic_ineq_r1()
+%MAGIC_INEQ_R1 Construct the one-round Magic Square winning tensor.
 
-    Y = [0, 1, 2];
+dims = struct('mA', 3, 'mB', 3, 'oA', 4, 'oB', 4, 'n', 1);
+inequalityTensor = zeros(dims.oA, dims.oB, dims.mA, dims.mB);
 
-    A = [0, 0, 0;
-         0, 1, 1;
-         1, 0, 1;
-         1, 1, 0;];
+aliceOutputs = [0, 0, 0;
+                0, 1, 1;
+                1, 0, 1;
+                1, 1, 0];
+bobOutputs = [0, 0, 1;
+              0, 1, 0;
+              1, 0, 0;
+              1, 1, 1];
 
-    B = [0, 0, 1;
-         0, 1, 0;
-         1, 0, 0;
-         1, 1, 1;];
-
-    for x_idx=1:dims.mA
-        for y_idx = 1:dims.mB
-            for a_idx = 1:dims.oA
-                for b_idx = 1:dims.oB
-                    if A(a_idx,y_idx) == B(b_idx,x_idx)
-                       I(a_idx,b_idx,x_idx,y_idx) = 1;
-                    end
+for x = 1:dims.mA
+    for y = 1:dims.mB
+        for a = 1:dims.oA
+            for b = 1:dims.oB
+                if aliceOutputs(a, y) == bobOutputs(b, x)
+                    inequalityTensor(a, b, x, y) = 1;
                 end
             end
         end
     end
-
-    magic_r1_coefficient_matrix = I;
-
+end
 end
