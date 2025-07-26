@@ -1,108 +1,90 @@
-function [maxValue, bestStrategies] = L0bit_bound(mA, mB, oA, oB, n, inequalityTensor, varargin)
-%findMaxInequality_NoComm_Tensor Finds the max inequality value for a scenario
-%   with NO communication, using a highly optimized tensor-based method.
+function [maxValue, bestStrategies] = L0bit_bound(inequalityTensor, dims, options)
+%L0BIT_BOUND Maximize an inequality over deterministic local strategies.
+%   [MAXVALUE, BESTSTRATEGIES] = L0BIT_BOUND(I, DIMS) searches a scenario
+%   whose coefficient tensor I has dimensions [oA^n, oB^n, mA^n, mB^n].
+%   DIMS must contain scalar positive integers mA, mB, oA, oB, and n.
 %
-%   [maxValue, bestStrategies] = findMaxInequality_NoComm_Tensor(mA, mB, oA, oB, n, inequalityTensor, Name, Value)
-%
-%   INPUTS:
-%   mA, mB, oA, oB, n: Scenario parameters.
-%   inequalityTensor: A tensor 'I' of size (oA^n, oB^n, mA^n, mB^n).
-%
-%   OPTIONAL NAME-VALUE PAIRS:
-%   'UseParallel': A logical true/false to enable/disable parallel computation.
-%                  Default is true.
+%   L0BIT_BOUND(..., 'UseParallel', true) uses Parallel Computing Toolbox.
+%   Serial execution is the default.
 
-%% 1. Input Parsing and Configuration
-p = inputParser;
-addParameter(p, 'UseParallel', true, @islogical);
-parse(p, varargin{:});
-useParallel = p.Results.UseParallel;
+arguments
+    inequalityTensor double
+    dims (1,1) struct
+    options.UseParallel (1,1) logical = false
+end
 
-fprintf('--- Optimized Tensor-Based Maximization (No Communication) ---\n');
-if useParallel && isempty(gcp('nocreate')), parpool; end
+requiredFields = {'mA', 'mB', 'oA', 'oB', 'n'};
+assert(all(isfield(dims, requiredFields)), ...
+    'QIToolbox:InvalidDimensions', 'dims must contain mA, mB, oA, oB, and n.');
+for field = requiredFields
+    validateattributes(dims.(field{1}), {'numeric'}, ...
+        {'scalar', 'integer', 'positive', 'finite'}, mfilename, ['dims.' field{1}]);
+end
+validateattributes(inequalityTensor, {'double'}, {'real', 'finite'}, mfilename, 'I');
 
-%% 2. Initialization
-numAliceInputs  = mA^n;
-numBobInputs    = mB^n;
-numAliceOutputs = oA^n;
-numBobOutputs   = oB^n;
+numAliceInputs = dims.mA^dims.n;
+numBobInputs = dims.mB^dims.n;
+numAliceOutputs = dims.oA^dims.n;
+numBobOutputs = dims.oB^dims.n;
+expectedSize = [numAliceOutputs, numBobOutputs, numAliceInputs, numBobInputs];
+assert(ndims(inequalityTensor) <= 4 && ...
+    isequal([size(inequalityTensor, 1), size(inequalityTensor, 2), ...
+    size(inequalityTensor, 3), size(inequalityTensor, 4)], expectedSize), ...
+    'QIToolbox:InvalidTensorSize', 'I must have size [oA^n, oB^n, mA^n, mB^n].');
 
-num_f_strat = vpa(numAliceOutputs)^vpa(numAliceInputs);
-num_g_strat = vpa(numBobOutputs)^vpa(numBobInputs);
+numAliceStrategies = numAliceOutputs^numAliceInputs;
+numBobStrategies = numBobOutputs^numBobInputs;
+assertStrategyCount(numAliceStrategies, 'Alice');
+assertStrategyCount(numBobStrategies, 'Bob');
 
-fprintf('Scenario: (%d, %d, %d, %d), n=%d\n', mA, mB, oA, oB, n);
-fprintf('Total Alice strategies (f): %s\n', char(num_f_strat));
-fprintf('Total Bob strategies   (g): %s\n', char(num_g_strat));
-fprintf('We will loop over g and find the best f for each.\n');
+fprintf('0-bit search: %g Alice strategies, %g Bob strategies.\n', ...
+    numAliceStrategies, numBobStrategies);
+if options.UseParallel && isempty(gcp('nocreate'))
+    parpool;
+end
 
-%% 3. Pre-computation of Alice's Response Values
-fprintf('Pre-computing Alice''s response values for each of Bob''s strategies...\n');
-tic;
-% AliceResponseValue(a_idx, g_idx, x_idx) = sum over y of I(a_idx, g_func(y), x_idx, y)
-AliceResponseValue = zeros(numAliceOutputs, double(num_g_strat), numAliceInputs);
-y_indices = (1:numBobInputs)';
+valuesPerG = zeros(numBobStrategies, 1);
+searchTimer = tic;
+if options.UseParallel
+    parfor gIndex = 1:numBobStrategies
+        response = aliceResponse(gIndex, inequalityTensor, numAliceOutputs, ...
+            numBobOutputs, numAliceInputs, numBobInputs);
+        valuesPerG(gIndex) = sum(max(response, [], 1));
+    end
+else
+    for gIndex = 1:numBobStrategies
+        response = aliceResponse(gIndex, inequalityTensor, numAliceOutputs, ...
+            numBobOutputs, numAliceInputs, numBobInputs);
+        valuesPerG(gIndex) = sum(max(response, [], 1));
+    end
+end
 
-for g_idx = 1:double(num_g_strat)
-    g_func = indexToStrategy(g_idx, numBobOutputs, numBobInputs);
-    for x_idx = 1:numAliceInputs
-        for a_idx = 1:numAliceOutputs
-            lin_indices = sub2ind(size(inequalityTensor), ...
-                                  repmat(a_idx, numBobInputs, 1), ...
-                                  g_func(y_indices)', ...
-                                  repmat(x_idx, numBobInputs, 1), ...
-                                  y_indices);
-            AliceResponseValue(a_idx, g_idx, x_idx) = sum(inequalityTensor(lin_indices));
+[maxValue, bestGIndex] = max(valuesPerG);
+bestResponse = aliceResponse(bestGIndex, inequalityTensor, numAliceOutputs, ...
+    numBobOutputs, numAliceInputs, numBobInputs);
+[~, bestF] = max(bestResponse, [], 1);
+
+bestStrategies.f = bestF;
+bestStrategies.g = indexToStrategy(bestGIndex, numBobOutputs, numBobInputs);
+fprintf('Maximum inequality value: %g (%.2f seconds).\n', maxValue, toc(searchTimer));
+end
+
+function response = aliceResponse(gIndex, inequalityTensor, numAliceOutputs, ...
+        numBobOutputs, numAliceInputs, numBobInputs)
+    g = indexToStrategy(gIndex, numBobOutputs, numBobInputs);
+    y = (1:numBobInputs)';
+    response = zeros(numAliceOutputs, numAliceInputs);
+    for x = 1:numAliceInputs
+        for a = 1:numAliceOutputs
+            indices = sub2ind(size(inequalityTensor), ...
+                repmat(a, numBobInputs, 1), g(:), ...
+                repmat(x, numBobInputs, 1), y);
+            response(a, x) = sum(inequalityTensor(indices));
         end
     end
 end
-fprintf('Pre-computation finished in %.2f seconds.\n', toc);
 
-%% 4. Main Search Loop (Iterating over Bob's strategies)
-fprintf('Starting main search...\n');
-% valuesPerG will store the max value achievable for each of Bob's strategies
-valuesPerG = zeros(double(num_g_strat), 1);
-mainLoopTic = tic;
-
-if useParallel
-    parfor g_idx = 1:double(num_g_strat)
-        % For this fixed g, find the total value of Alice's best response.
-        % Alice's best response is to choose, for each x, the 'a' that
-        % maximizes her value from the pre-computed table.
-        best_vals_for_each_x = max(AliceResponseValue(:, g_idx, :), [], 1);
-        valuesPerG(g_idx) = sum(best_vals_for_each_x);
-    end
-else
-    for g_idx = 1:double(num_g_strat)
-        best_vals_for_each_x = max(AliceResponseValue(:, g_idx, :), [], 1);
-        valuesPerG(g_idx) = sum(best_vals_for_each_x);
-    end
-end
-
-fprintf('Main search complete in %.2f seconds. Aggregating results...\n', toc(mainLoopTic));
-
-%% 5. Find Maximum Value and Optimal Strategies
-[maxValue, best_g_idx] = max(valuesPerG);
-
-% Now that we have the best g, we need to reconstruct the best f that goes with it.
-best_f_func = zeros(1, numAliceInputs);
-for x_idx = 1:numAliceInputs
-    % Find the index 'a' that gives the max value for this x and best g.
-    [~, best_a_idx] = max(AliceResponseValue(:, best_g_idx, x_idx));
-    best_f_func(x_idx) = best_a_idx;
-end
-
-best_g_func = indexToStrategy(best_g_idx, numBobOutputs, numBobInputs);
-
-bestStrategies.f = best_f_func;
-bestStrategies.g = best_g_func;
-
-fprintf('\n--- Search Complete ---\n');
-fprintf('Maximum inequality value found: %f\n', maxValue);
-end
-
-% --- Helper function (unchanged) ---
-function strategy = indexToStrategy(index, base, len)
-    if len == 0, strategy = []; return; end
-    strategy = ones(1, len); idx = index - 1;
-    for k = 1:len, strategy(k) = mod(idx, base) + 1; idx = floor(idx / base); if idx == 0, break; end; end
+function assertStrategyCount(count, party)
+    assert(isfinite(count) && count <= flintmax, 'QIToolbox:StrategySpaceTooLarge', ...
+        '%s strategy count is too large for reliable exhaustive indexing.', party);
 end

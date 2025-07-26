@@ -1,21 +1,11 @@
-% Script to run the tensor-based search
+%% One-round Magic Square local bound
+[I, dims] = magic_ineq_r1();
 
-% --- Define Scenario ---
-% Set number of parallel reptition 
-n = 1;
+started = tic;
+[maxValue, bestStrategies] = L0bit_bound(I, dims);
+elapsed = toc(started);
 
-% --- 1. Create the Inequality Tensor 'I' ---
-fprintf('Creating magic inequality tensor...\n');
-
-%chsh_ineq_2
-[I,dims] = magic_ineq_r1();
-
-% --- 2. Run the search ---
-tic;
-% Run sequentially for this small problem
-[maxVal, best] = L0bit_bound(dims.mA, dims.mB, dims.oA, dims.oB, n, I, 'UseParallel', false);
-toc;
-
-% Display results
-disp('Best strategies found:');
-disp(best);
+fprintf('Magic Square r1 local bound: %g (expected 8), %.2f seconds.\n', ...
+    maxValue, elapsed);
+disp('Best strategies:');
+disp(bestStrategies);

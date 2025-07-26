@@ -1,21 +1,12 @@
-% Script to run the tensor-based search
-
-% --- Define Scenario ---
-% Set number of parallel reptition 
+%% One-round CHSH bound with one bit of communication
 n = 1;
+[I, dims] = chsh_ineq_rn(n);
 
-% --- 1. Create the Inequality Tensor 'I' ---
-fprintf('Creating CHSH inequality tensor...\n');
+started = tic;
+[maxValue, bestStrategies] = L1bit_bound(I, dims);
+elapsed = toc(started);
 
-%chsh_ineq_2
-[I,dims] = chsh_ineq_rn(n);
-
-% --- 2. Run the search ---
-tic;
-% Run sequentially for this small problem
-[maxVal, best] = L1bit_bound(dims.mA, dims.mB, dims.oA, dims.oB, n, I, 'UseParallel', false);
-toc;
-
-% Display results
-disp('Best strategies found:');
-disp(best);
+fprintf('CHSH r%d 1-bit bound: %g (expected 4), %.2f seconds.\n', ...
+    n, maxValue, elapsed);
+disp('Best strategies:');
+disp(bestStrategies);
